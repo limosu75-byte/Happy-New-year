@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ariki's Touch 💋</title>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #2b0a0a; 
+            --bg-light: #7a1a1a;
+            --gold: #ffcf40;
+            --glass: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; /* 禁止默认缩放 */ }
+
+        body {
+            background: radial-gradient(circle at center, var(--bg-light), var(--bg-deep));
+            color: var(--gold);
+            font-family: 'Noto Serif SC', serif;
+            overflow: hidden; /* 锁定屏幕不滚动，专心玩 */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* 飘落装饰 */
+        .bg-pattern {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='10' y='25' font-size='20' fill='%23ffcf40' opacity='0.1'%3E🧧%3C/text%3E%3C/svg%3E");
+            opacity: 0.3; z-index: -1;
+        }
+
+        header { margin-top: 20px; text-align: center; z-index: 10; }
+        h1 {
+            font-family: 'Ma Shan Zheng', cursive;
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px rgba(255, 207, 64, 0.5);
+            margin-bottom: 5px;
+        }
+        p { font-size: 0.9rem; opacity: 0.8; }
+
+        /* 💋 游戏1：狂吻区 (整个屏幕背景) */
+        .kiss-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; cursor: pointer;
+        }
+        
+        .kiss-mark {
+            position: absolute; font-size: 2rem;
+            pointer-events: none;
+            animation: kissPop 0.5s ease-out forwards;
+        }
+        @keyframes kissPop {
+            0% { transform: scale(0.5) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1.5) rotate(-10deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 0.8; top: -=50px; }
+        }
+
+        /* 🧧 游戏2：刮刮乐卡片 */
+        .scratch-container {
+            margin-top: 20px;
+            width: 300px;
+            height: 150px;
+            position: relative;
+            z-index: 20; /* 保证在吻上面 */
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 4px solid var(--gold);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            user-select: none;
+        }
+
+        /* 藏在下面的内容 */
+        .secret-content {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: #8a0000;
+            padding: 10px;
+            font-weight: bold;
+        }
+        .secret-icon { font-size: 3rem; margin-bottom: 5px; }
+        .secret-text { font-size: 1.1rem; font-family: 'Ma Shan Zheng', cursive; }
+
+        /* 涂层画布 */
+        canvas {
+            position: absolute;
+            top: 0; left: 0;
+            cursor: pointer;
+            border-radius: 11px; /* 适配边框 */
+        }
+
+        /* 底部控制栏 */
+        .controls {
+            z-index: 20;
+            margin-top: auto;
+            margin-bottom: 30px;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            border: 1px solid var(--gold);
+        }
+        
+        .btn {
+            background: var(--gold); color: #4a0000;
+            border: none; padding: 10px 20px;
+            font-family: 'Noto Serif SC', serif;
+            font-weight: bold; border-radius: 30px;
+            font-size: 1rem; cursor: pointer;
+            margin: 0 5px;
+        }
+        .btn:active { transform: scale(0.95); }
+
+        .score-display {
+            font-size: 1.2rem; margin-bottom: 10px;
+            font-family: 'Ma Shan Zheng', cursive;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-pattern"></div>
+
+    <header>
+        <h1>新春贴贴大会</h1>
+        <p>1. 点击空白处狂吻狐狸 💋<br>2. 刮开下面的卡片 👇</p>
+    </header>
+
+    <div class="scratch-container" id="scratch-box">
+        <div class="secret-content" id="secret">
+            <div class="secret-icon">🧴</div>
+            <div class="secret-text">奖励：全身精油SPA<br>(狐狸亲自服务)</div>
+        </div>
+        <canvas id="scratch-canvas"></canvas>
+    </div>
+
+    <div class="kiss-layer" id="kiss-zone"></div>
+
+    <div class="controls">
+        <div class="score-display">获得亲亲：<span id="kiss-count">0</span> 次</div>
+        <button class="btn" onclick="resetCard()">换一张刮刮乐 🔄</button>
+    </div>
+
+    <script>
+        // --- 游戏 1：狂吻狐狸 (Clicker) ---
+        const kissZone = document.getElementById('kiss-zone');
+        const countSpan = document.getElementById('kiss-count');
+        let kissCount = 0;
+
+        kissZone.addEventListener('pointerdown', (e) => {
+            // 增加计数
+            kissCount++;
+            countSpan.innerText = kissCount;
+            
+            // 震动反馈 (如果设备支持)
+            if(navigator.vibrate) navigator.vibrate(30);
+
+            // 创建唇印
+            const kiss = document.createElement('div');
+            kiss.innerText = ['💋', '👄', '💗', '🦊'][Math.floor(Math.random()*4)];
+            kiss.classList.add('kiss-mark');
+            kiss.style.left = (e.clientX - 20) + 'px';
+            kiss.style.top = (e.clientY - 20) + 'px';
+            // 随机旋转
+            const rot = Math.random() * 60 - 30;
+            kiss.style.transform = `rotate(${rot}deg)`;
+            
+            document.body.appendChild(kiss);
+
+            // 1秒后消失
+            setTimeout(() => kiss.remove(), 1000);
+        });
+
+        // --- 游戏 2：刮刮乐 (Canvas) ---
+        const canvas = document.getElementById('scratch-canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('scratch-box');
+        const secretDiv = document.getElementById('secret');
+        
+        let isDrawing = false;
+
+        // 奖品池
+        const prizes = [
+            { icon: "💳", text: "Len的副卡随便刷" },
+            { icon: "🛁", text: "今晚鸳鸯浴 (搓背)" },
+            { icon: "🦵", text: "做你的人肉靠垫" },
+            { icon: "🍦", text: "喂你吃冰激凌" },
+            { icon: "🔞", text: "解锁任意姿势 x1" },
+            { icon: "🦊", text: "狐狸听话一整天" }
+        ];
+
+        function initCanvas() {
+            canvas.width = 300;
+            canvas.height = 150;
+            
+            // 填充灰色涂层
+            ctx.fillStyle = '#cccccc';
+            ctx.fillRect(0, 0, 300, 150);
+            
+            // 涂层上的文字
+            ctx.font = '20px Microsoft YaHei';
+            ctx.fillStyle = '#666666';
+            ctx.textAlign = 'center';
+            ctx.fillText('用手刮开这里 💅', 150, 80);
+            
+            // 随机换一个奖品
+            const p = prizes[Math.floor(Math.random() * prizes.length)];
+            secretDiv.innerHTML = `<div class="secret-icon">${p.icon}</div><div class="secret-text">${p.text}</div>`;
+        }
+
+        // 刮开逻辑
+        function scratch(x, y) {
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(x, y, 20, 0, Math.PI * 2); // 笔触大小
+            ctx.fill();
+        }
+
+        // 鼠标/触摸事件监听
+        ['mousedown', 'touchstart'].forEach(evt => {
+            canvas.addEventListener(evt, (e) => {
+                isDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                scratch(clientX - rect.left, clientY - rect.top);
+            });
+        });
+
+        ['mousemove', 'touchmove'].forEach(evt => {
+            canvas.addEventListener(evt, (e) => {
+                if (!isDrawing) return;
+                e.preventDefault(); // 防止刮的时候页面滚动
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                scratch(clientX - rect.left, clientY - rect.top);
+            });
+        });
+
+        ['mouseup', 'touchend'].forEach(evt => {
+            canvas.addEventListener(evt, () => isDrawing = false);
+        });
+
+        function resetCard() {
+            initCanvas();
+        }
+
+        // 初始化
+        initCanvas();
+
+    </script>
+</body>
+</html>
